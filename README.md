@@ -6,6 +6,11 @@ A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.
 * **Homepage:** https://github.com/nshahzad/codon-profiler
 * **License:** MIT
 
+Current to-do list:
+
+* Console colors to show the fastest test runs
+* Use the Vulcan Logic Dumper (http://derickrethans.nl/projects.html#vld) to allow you to see opcode differences
+
 # Installation
 
 Add to your composer.json file:
@@ -16,14 +21,38 @@ Add to your composer.json file:
 }
 ```
 
-# Usage
+# Basic Usage
 
 This class extensively uses closures, and all of the methods (except for getResults) are chainable.
 Declare a new Profiler class:
 
 ```php
 <?php
+$data = [/* ... */];
 $profiler = new \Codon\Profiler();
+$profiler->set('showOutput', false)
+    ->add([
+        'name' => 'Count in loop', 'iterations' => 100,
+        'function' => function() use ($data, &$profiler) {
+            // This is the code to benchmark:
+            for($i = 0; $i <= count($data); $i++) {
+                echo $data[$i] . "\n";
+            }
+        }
+    ])->run()->showResults();
+```
+
+Which will output something like:
+
+```
+Tests started at: 2012-08-15T12:05:37-04:00
+Tests run: 2, iterations: 200
+PHP Version: 5.4.5-1~dotdeb.0
+
+Count in loop               (Iterations: 100)
+---------
+Timers:
+              total:        0.000011045170
 ```
 
 ## Settings
@@ -116,6 +145,7 @@ for($i = 0; $i < 1000; $i++) {
 	$data[] = $i;
 }
 
+# You can pass options to the constructor
 $profiler = new \Codon\Profiler([
 	'showOutput' => false
 ]);
@@ -150,6 +180,8 @@ Timers:
 ```
 
 # Examples
+
+## Multiple Tests
 
 ```php
 <?php
@@ -207,7 +239,51 @@ Timers:
               total:        0.000004445744
 ```
 
-Here's an example using the memory usage and timers and checkpoints (same $data as above)
+## The same as above, but with timers:
+
+```php
+<?php
+$profiler
+	->clearAll()
+    ->add([
+        'name' => 'Count in loop',
+        'iterations' => 100,
+        'function' => function() use ($data, &$profiler) {
+
+			$profiler->startTimer('Inside loop');
+            for($i = 0; $i < count($data); $i++) {
+                echo $data[$i] . "\n";
+            }
+			$profiler->endTimer('Inside loop');
+
+
+			$profiler->startTimer('Outside loop');
+			$count = count($data);
+			for($i = 0; $i < $count; $i++) {
+				echo $data[$i] . "\n";
+			}
+			$profiler->endTimer('Outside loop');
+        }
+    ])
+	->run()
+	->showResults();
+```
+
+Showing:
+
+```
+Tests started at: 2012-08-15T12:40:28-04:00
+Tests run: 1, iterations: 300
+PHP Version: 5.4.5-1~dotdeb.0
+Count in loop               (Iterations: 100)
+---------
+Timers:
+        Inside loop:        0.000016908646
+       Outside loop:        0.000004930496
+              total:        0.000022240901
+```
+
+## Using Timers and checkpoints
 
 ```php
 <?php

@@ -58,3 +58,29 @@ $profiler
     ])
 	->run()
 	->showResults();
+
+
+$profiler
+	->clearAll()
+    ->add([
+        'name' => 'Count in loop',
+        'iterations' => 100,
+        'function' => function() use ($data, &$profiler) {
+
+			$profiler->startTimer('Inside loop');
+            for($i = 0; $i < count($data); $i++) {
+                echo $data[$i] . "\n";
+            }
+			$profiler->endTimer('Inside loop');
+
+
+			$profiler->startTimer('Outside loop');
+			$count = count($data);
+			for($i = 0; $i < $count; $i++) {
+				echo $data[$i] . "\n";
+			}
+			$profiler->endTimer('Outside loop');
+        }
+    ])
+	->run()
+	->showResults();
