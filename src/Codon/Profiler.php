@@ -40,17 +40,20 @@ class Profiler {
 	 */
 	public $params = [
 		'showOutput' => false,
-		'tareRuns' => true
+		'tareRuns' => true,
+		'formatMemoryUsage' => true
 	];
 
 	# Keep it all together
-	protected $_callees = [];
-	protected $_stats = [];
-	protected $_tare = 0;
-	protected $_runtime = [
+	protected $_tests = [];	# Hold all of the tests
+	protected $_results = [];		# Hold all of the test results
+	protected $_tare = 0;		# The tare value for a closure
+	
+	protected $_running = ''; 		# What test is running now (nr = now running)
+	protected $_runtime = [		# Details about what what's running now
 		'start_time' => 0,
 		'end_time' => 0,
-		'name' => ''
+		'total_iterations' => 0
 	];
 
 
@@ -60,37 +63,46 @@ class Profiler {
 	 */
 	public function __construct(array $params = []) {
 		$this->params = array_merge($this->params, $params);
+		$this->_runtime['start_time'] = time(); # if we only use checkpoints
 	}
 
 
 	/**
 	 * Set options for this benchmarking class
-	 * @param string $name Name of the setting from $this->params
+	 * @param mixed $name Name of the setting from $this->params
 	 * @param mixed $value Value of said setting
 	 * @return Profiler
 	 */
 	public function set($name, $value) {
-		$this->params[$name] = $value;
+
+		if(is_array($name)) {
+			foreach($name as $key => $value) {
+				$this->params[$key] = $value;
+			}
+		} else {
+			$this->params[$name] = $value;
+		}
+
 		return $this;
 	}
 
 
 	/**
 	 * Add a benchmark to run; pass an array with the following syntax
-	 * $callee = [
+	 * $test = [
 	 *  'name' => 'Benchmark name',
 	 *  'iterations' => # of times to run
 	 *  'function' => closure of the test to run
 	 * ]
 	 *
-	 * @param array $callee An array with the benchmark to run
+	 * @param array $test An array with the benchmark to run
 	 * @return Profiler
 	 */
-	public function add(array $callee) {
+	public function add(array $test) {
 
-		$this->_callees[$callee['name']] = [
-			'iterations' => (isset($callee['iterations']) ? intval($callee['iterations']) : 1),
-			'function' => $callee['function']
+		$this->_tests[$test['name']] = [
+			'iterations' => (isset($test['iterations']) ? intval($test['iterations']) : 1),
+			'function' => $test['function']
 		];
 
 		return $this;
@@ -103,8 +115,8 @@ class Profiler {
 	 */
 	public function clearAll() {
 
-		$this->_callees = [];
-		$this->_stats = [];
+		$this->_tests = [];
+		$this->_results = [];
 
 		return $this;
 	}
@@ -135,30 +147,31 @@ class Profiler {
 			$this->_tare = $this->_tare / 100;
 		}
 
-		foreach ($this->_callees as $name => $callee) {
+		foreach ($this->_tests as $name => $test) {
 
 			# SILENCE! I KILL YOU!
 			if ($this->params['showOutput'] === false)
 				ob_start();
 
 			# Figure out how many to run
-			if (empty($callee['iterations']))
-				$callee['iterations'] = 1;
+			if (empty($test['iterations']))
+				$test['iterations'] = 1;
 
 			# Initialize any stats we use
-			$this->_runtime['name'] = $name;
+			$this->_running = $name;
 			$this->_runtime['start_time'] = time();
-			$this->_stats[$name] = [
+			$this->_runtime['total_iterations'] += $test['iterations'];
+			$this->_results[$name] = [
 				'timers' => [],
 				'checkpoints' => [],
 				'memory' => []
 			];
 
 			# Run the number of iterations specified
-			for ($i = 0; $i < $callee['iterations']; $i++) {
+			for ($i = 0; $i < $test['iterations']; $i++) {
 				# Start our timers and run the actual thing
 				$this->startTimer('__total');
-				$callee['function']();
+				$test['function']();
 				$this->endTimer('__total');
 			}
 
@@ -168,18 +181,28 @@ class Profiler {
 				ob_end_clean();
 
 			# Average up the stats for all of the timers
-			foreach ($this->_stats[$name]['timers'] as $m_name => $m_val) {
-				$average = $m_val['total'] / $callee['iterations'];
-				$this->_stats[$name]['timers'][$m_name]['total'] = $average;
+			foreach ($this->_results[$name]['timers'] as $t_name => &$t_val) {
+				$t_val['total'] = $t_val['total'] / $test['iterations'];
 			}
 
-			# @TODO Average memory usage numbers
+			# Average the memory usage
+			foreach ($this->_results[$name]['memory'] as $m_name => &$m_val) {
+				$m_val['total'] = $m_val['total'] / $test['iterations'];
+				$m_val['real'] = $m_val['real'] / $test['iterations'];
+			}
 
+			# Average the checkpoints
+			foreach ($this->_results[$name]['checkpoints'] as $c_name => &$c_val) {
+				$c_val = ($c_val / $test['iterations']);
+			}
 
-			# @TODO: Calculate checkpoint time average
+			# Place the total marker at the end
+			$tmp = $this->_results[$name]['timers']['__total'];
+			unset($this->_results[$name]['timers']['__total']);
+			$this->_results[$name]['timers']['total'] = $tmp;
 
 			# Average the marker run-time
-			$this->_stats[$name]['iterations'] = $callee['iterations'];
+			$this->_results[$name]['iterations'] = $test['iterations'];
 		}
 
 		return $this;
@@ -192,7 +215,7 @@ class Profiler {
 	 * @return Profiler
 	 */
 	public function startTimer($name) {
-		$this->_stats[$this->_runtime['name']]['timers'][$name]['start'] = microtime(true);
+		$this->_results[$this->_running]['timers'][$name]['start'] = microtime(true);
 		return $this;
 	}
 
@@ -204,19 +227,19 @@ class Profiler {
 	 */
 	public function endTimer($n) {
 
-		$r = $this->_runtime['name']; # Just shorthand
-		$this->_stats[$r]['timers'][$n]['end'] = microtime(true);
+		$r = $this->_running; # Just shorthand
+		$this->_results[$r]['timers'][$n]['end'] = microtime(true);
 
-		if (!isset($this->_stats[$r][$n]['total'])) {
-			$this->_stats[$r]['timers'][$n]['total'] = 0;
+		if (!isset($this->_results[$r][$n]['total'])) {
+			$this->_results[$r]['timers'][$n]['total'] = 0;
 		}
 
 		# Get the total run time for this marker
-		$this->_stats[$r]['timers'][$n]['total'] += ($this->_stats[$r]['timers'][$n]['end'] - $this->_stats[$r]['timers'][$n]['start']);
+		$this->_results[$r]['timers'][$n]['total'] += ($this->_results[$r]['timers'][$n]['end'] - $this->_results[$r]['timers'][$n]['start']);
 
 		# Remove the tare'd amount if this is a total
 		if ($n === '__total' && $this->params['tareRuns'] !== false) {
-			$this->_stats[$r]['timers'][$n]['total'] -= $this->_tare;
+			$this->_results[$r]['timers'][$n]['total'] -= $this->_tare;
 		}
 
 		return $this;
@@ -230,11 +253,14 @@ class Profiler {
 	 */
 	public function checkpoint($n) {
 
-		if(!$this->_stats[$this->_runtime['name']]['checkpoint'][$n]) {
-			$this->_stats[$this->_runtime['name']]['checkpoint'][$n] = 0;
+		if(!isset($this->_results[$this->_running]['checkpoints'][$n])) {
+			$this->_results[$this->_running]['checkpoints'][$n] = 0;
 		}
 
-		$this->_stats[$this->_runtime['name']]['checkpoint'][$n] += microtime(true);
+		# Get the run-time from the start and add it to the total
+		$delta = microtime(true) - $this->_results[$this->_running]['timers']['__total']['start'];
+		$this->_results[$this->_running]['checkpoints'][$n] += $delta;
+
 		return $this;
 	}
 
@@ -245,9 +271,14 @@ class Profiler {
 	 * @return Profiler
 	 */
 	public function markMemoryUsage($name) {
-		//@TODO: Aggregate and average
-		$this->_stats[$this->_runtime['name']]['memory'][$name]['total'] = memory_get_usage();
-		$this->_stats[$this->_runtime['name']]['memory'][$name]['real'] = memory_get_usage(true);
+
+		if(!isset($this->_results[$this->_running]['memory'][$name]['total'])) {
+			$this->_results[$this->_running]['memory'][$name]['total'] = 0;
+			$this->_results[$this->_running]['memory'][$name]['real'] = 0;
+		}
+
+		$this->_results[$this->_running]['memory'][$name]['total'] += memory_get_usage();
+		$this->_results[$this->_running]['memory'][$name]['real'] += memory_get_usage(true);
 		return $this;
 	}
 
@@ -257,7 +288,7 @@ class Profiler {
 	 * @return array
 	 */
 	public function getResults() {
-		return $this->_stats;
+		return $this->_results;
 	}
 
 
@@ -269,39 +300,53 @@ class Profiler {
 	 */
 	public function showResults($html = false, $return = false) {
 
-		$heading_fmt = "%20s  %20s  \n";
-		$marker_fmt = "%19s  %20.12f\n";
-		$memory_fmt = "%19s  %12d %10s\n";
+		$heading_fmt = "%-27s %s\n";
+		$marker_fmt = "%20s  %20.12f\n";
+		$checkpoint_fmt = "%20s  %20.12f\n";
+		$memory_fmt = "%20s  %12s %12s\n";
 
 		$text = "Tests started at: " . date('c', $this->_runtime['start_time']) . "\n";
+		$text .= "Tests run: " . count($this->_results) . ", ";
+		$text .= "iterations: " . $this->_runtime['total_iterations'] . "\n";
 		$text .= "PHP Version: " . phpversion() . "\n\n";
 
-		foreach ($this->_stats as $name => $details) {
-
-			# Place the total marker at the end
-			$tmp = $this->_stats[$name]['timers']['__total'];
-			unset($this->_stats[$name]['timers']['__total']);
-			$this->_stats[$name]['timers']['Total'] = $tmp;
+		foreach ($this->_results as $t_name => $res) {
 
 			# Show test title
-			$text .= sprintf($heading_fmt, $name, 'Iterations: ' . $details['iterations']);
+			$text .= sprintf($heading_fmt, $t_name, "(Iterations: {$res['iterations']})\n---------");
 
 			# Show time usages
-			foreach ($details['timers'] as $tmr_n => $tmr_d) {
-				$text .= sprintf($marker_fmt, $tmr_n, $tmr_d['total']);
-			}
-
-			# Show checkpoints
-
-			# Show memory usages
-			if (count($details['memory']) > 0) {
-				$text .= "\n" . sprintf($memory_fmt, "Memory Usage:", '');
-				foreach ($details['memory'] as $mem_pt_name => $usage) {
-					$text .= sprintf($memory_fmt, $mem_pt_name, $usage['total'], $usage['real']);
-				}
+			$text .= sprintf($heading_fmt, "Timers:", '');
+			foreach ($res['timers'] as $tmr_n => $tmr_d) {
+				$text .= sprintf($marker_fmt, $tmr_n . ':', $tmr_d['total']);
 			}
 
 			$text .= "\n";
+
+			# Show checkpoints
+			if (count($res['checkpoints']) > 0) {
+				$text .= sprintf($heading_fmt, "Checkpoints:", '');
+				foreach ($res['checkpoints'] as $cp_n => $cp_d) {
+					$text .= sprintf($checkpoint_fmt, $cp_n . ':', $cp_d);
+				}
+				$text .= "\n";
+			}
+
+			# Show memory usages
+			if (count($res['memory']) > 0) {
+				$text .= sprintf($heading_fmt, "Memory Usage: ", "(script, total)");
+				foreach ($res['memory'] as $mem_pt_name => $usage) {
+					$text .= sprintf(
+						$memory_fmt,
+						$mem_pt_name . ':',
+						$this->formatMemory($usage['total']),
+						$this->formatMemory($usage['real'])
+					);
+				}
+				$text .= "\n";
+			}
+
+			$text .= "\n\n";
 		}
 
 		if ($html === true) {
@@ -315,5 +360,26 @@ class Profiler {
 		echo $text;
 
 		return $this;
+	}
+
+	/**
+	 * Format the memory used into a B/KB/MB format
+	 * @param mixed $memory
+	 * @return string
+	 */
+	public function formatMemory($memory) {
+
+		if($this->params['formatMemoryUsage'] === false) {
+			return $memory;
+		}
+
+		$memory = intval($memory);
+
+		if ($memory < 1024)
+			return $memory . "B";
+		elseif ($memory < 1048576)
+			return round($memory/1024)." KB";
+		else
+			return round($memory/1048576)." MB";
 	}
 }
