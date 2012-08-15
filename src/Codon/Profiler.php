@@ -149,10 +149,6 @@ class Profiler {
 
 		foreach ($this->_tests as $name => $test) {
 
-			# SILENCE! I KILL YOU!
-			if ($this->params['showOutput'] === false)
-				ob_start();
-
 			# Figure out how many to run
 			if (empty($test['iterations']))
 				$test['iterations'] = 1;
@@ -176,9 +172,6 @@ class Profiler {
 			}
 
 			$this->_runtime['end_time'] = time();
-
-			if ($this->params['showOutput'] === false)
-				ob_end_clean();
 
 			# Average up the stats for all of the timers
 			foreach ($this->_results[$name]['timers'] as $t_name => &$t_val) {
@@ -216,6 +209,10 @@ class Profiler {
 	 */
 	public function startTimer($name) {
 		$this->_results[$this->_running]['timers'][$name]['start'] = microtime(true);
+
+		if ($this->params['showOutput'] === false)
+			ob_start();
+
 		return $this;
 	}
 
@@ -241,6 +238,9 @@ class Profiler {
 		if ($n === '__total' && $this->params['tareRuns'] !== false) {
 			$this->_results[$r]['timers'][$n]['total'] -= $this->_tare;
 		}
+
+		if ($this->params['showOutput'] === false)
+			ob_end_clean();
 
 		return $this;
 	}
@@ -303,17 +303,18 @@ class Profiler {
 		$heading_fmt = "%-27s %s\n";
 		$marker_fmt = "%20s  %20.12f\n";
 		$checkpoint_fmt = "%20s  %20.12f\n";
-		$memory_fmt = "%20s  %12s %12s\n";
+		$memory_fmt = "%20s  %12s %12s %12s\n";
 
 		$text = "Tests started at: " . date('c', $this->_runtime['start_time']) . "\n";
 		$text .= "Tests run: " . count($this->_results) . ", ";
 		$text .= "iterations: " . $this->_runtime['total_iterations'] . "\n";
-		$text .= "PHP Version: " . phpversion() . "\n\n";
+		$text .= "PHP Version: " . phpversion() . "\n";
 
 		foreach ($this->_results as $t_name => $res) {
 
 			# Show test title
-			$text .= sprintf($heading_fmt, $t_name, "(Iterations: {$res['iterations']})\n---------");
+			$iterations = isset($res['iterations']) ? "(Iterations: {$res['iterations']})" : '';
+			$text .= sprintf($heading_fmt, $t_name, "$iterations\n---------");
 
 			# Show time usages
 			$text .= sprintf($heading_fmt, "Timers:", '');
@@ -324,7 +325,7 @@ class Profiler {
 			$text .= "\n";
 
 			# Show checkpoints
-			if (count($res['checkpoints']) > 0) {
+			if (isset($res['checkpoints']) && count($res['checkpoints']) > 0) {
 				$text .= sprintf($heading_fmt, "Checkpoints:", '');
 				foreach ($res['checkpoints'] as $cp_n => $cp_d) {
 					$text .= sprintf($checkpoint_fmt, $cp_n . ':', $cp_d);
@@ -333,13 +334,14 @@ class Profiler {
 			}
 
 			# Show memory usages
-			if (count($res['memory']) > 0) {
-				$text .= sprintf($heading_fmt, "Memory Usage: ", "(script, total)");
+			if (isset($res['memory']) && count($res['memory']) > 0) {
+				$text .= sprintf($memory_fmt, "Memory Usage: ", "script", "peak", "total");
 				foreach ($res['memory'] as $mem_pt_name => $usage) {
 					$text .= sprintf(
 						$memory_fmt,
 						$mem_pt_name . ':',
 						$this->formatMemory($usage['total']),
+						$this->formatMemory(memory_get_peak_usage()),
 						$this->formatMemory($usage['real'])
 					);
 				}

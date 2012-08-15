@@ -46,8 +46,8 @@ Some settings (type and (default)):
 
 There are two ways you can use the profile:
 
-1. Add tests using ```add()```
-2. Profile code inline using the ```startTimer()/endTimer()```
+1. Add tests using ```add()```; (see test/benchmark.php)
+2. Profile code inline using the ```startTimer()/endTimer()```; (see test/inline.php)
 
 
 ### Using add()
@@ -106,7 +106,50 @@ $profiler->showResults([bool $html = false (wrap PRE with BR's)], [bool $return 
 
 ### Using the profiler inline
 
+You can call the ```startTimer()/endTimer()``` and ```markMemoryUsage()``` functions in any inline code
+Example:
 
+```php
+<?php
+$data = [];
+for($i = 0; $i < 1000; $i++) {
+	$data[] = $i;
+}
+
+$profiler = new \Codon\Profiler([
+	'showOutput' => false
+]);
+
+
+$profiler->markMemoryUsage('start');
+$profiler->startTimer('Count in loop');
+
+for($i = 0; $i < count($data); $i++) {
+	echo $data[$i] . "\n";
+}
+
+$profiler->endTimer('Count in loop');
+$profiler->markMemoryUsage('end');
+
+
+$profiler->showResults();
+```
+
+Which shows:
+
+```
+Tests started at: 2012-08-15T12:30:02-04:00
+Tests run: 1, iterations: 0
+PHP Version: 5.4.5-1~dotdeb.0
+
+---------
+Timers:
+      Count in loop:        0.001808881760
+
+      Memory Usage:         script         peak        total
+              start:        435 KB       456 KB       512 KB
+                end:        438 KB       456 KB       512 KB
+```
 
 # Examples
 
@@ -126,6 +169,7 @@ $profiler
         'name' => 'Count in loop',
         'iterations' => 100,
         'function' => function() use ($data, &profiler) {
+            // This is the code we are profiling
             for($i = 0; $i < count($data); $i++) {
                 echo $data[$i] . "\n";
             }
@@ -135,6 +179,7 @@ $profiler
         'name' => 'Count out of loop',
         'iterations' => 100,
         'function' => function() use ($data, &profiler) {
+            // This is the code we are profiling
 			$count = count($data);
             for($i = 0; $i < $count; $i++) {
                 echo $data[$i] . "\n";
@@ -177,6 +222,8 @@ $profiler
         'iterations' => 100,
         'function' => function() use ($data, &$profiler) {
 
+            // This is the code we are profiling
+
 			$profiler->markMemoryUsage('Start of loop');
 			$profiler->startTimer('Loop only');
             for($i = 0; $i < count($data); $i++) {
@@ -195,6 +242,8 @@ $profiler
         'name' => 'Count out of loop',
         'iterations' => 100,
         'function' => function() use ($data, &$profiler) {
+
+            // This is the code we are profiling
 
 			$profiler->markMemoryUsage('Start of loop');
 			$count = count($data);
@@ -220,40 +269,40 @@ $profiler
 Which will output:
 
 ```
-Tests started at: 2012-08-15T12:12:45-04:00
+Tests started at: 2012-08-15T12:30:07-04:00
 Tests run: 2, iterations: 200
 PHP Version: 5.4.5-1~dotdeb.0
-
 Count in loop               (Iterations: 100)
 ---------
 Timers:
-          Loop only:        0.000020401478
-              total:        0.000020751405
+          Loop only:        0.000015780926
+              total:        0.000016092539
 
 Checkpoints:
-            halfway:        0.000860433578
+            halfway:        0.000819134712
 
-Memory Usage:               (script, total)
-      Start of loop:        654 KB       837 KB
-            halfway:        656 KB       842 KB
+      Memory Usage:         script         peak        total
+      Start of loop:        468 KB       491 KB       512 KB
+            halfway:        484 KB       491 KB       512 KB
 
 
 
 Count out of loop           (Iterations: 100)
 ---------
 Timers:
-          Loop only:        0.000006358624
-              total:        0.000006601262
+          Loop only:        0.000006530285
+              total:        0.000006922960
 
 Checkpoints:
-            halfway:        0.000318896770
+            halfway:        0.000361402035
 
-Memory Usage:               (script, total)
-      Start of loop:        658 KB       837 KB
-            halfway:        660 KB       842 KB
+      Memory Usage:         script         peak        total
+      Start of loop:        472 KB       491 KB       512 KB
+            halfway:        488 KB       491 KB       512 KB
 ```
 
 ### Calling getResults
+
 Additionally, calling ```getResults()``` will return an array of:
 
 ```

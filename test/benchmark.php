@@ -1,7 +1,10 @@
 #!/usr/bin/php
 <?php
-ini_set('date.timezone', 'America/New_York');
+/**
+ * Example of benchmarking distinct stuff
+ */
 
+ini_set('date.timezone', 'America/New_York');
 include dirname(__FILE__) . '/../src/Codon/Profiler.php';
 
 $data = [];
