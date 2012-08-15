@@ -1,0 +1,21 @@
+{
+    "name": "codon/profiler",
+    "type": "library",
+    "description": "A PHP 5.4+ profiling/benchmarking tool",
+    "keywords": ["profiling","benchmarking"],
+    "homepage": "https://github.com/nshahzad/codon-profiler",
+    "license": "MIT",
+    "authors": [{
+        "name": "Nabeel Shahzad",
+        "email": "nshahzad@gmail.com",
+        "homepage": "http://nabeelio.com"
+    }],
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "Codon": "src/"
+        }
+    }
+}
