@@ -1,5 +1,6 @@
 {
     "name": "codon/profiler",
+    "version": "1.0.0",
     "type": "library",
     "description": "A PHP 5.4+ profiling/benchmarking tool",
     "keywords": ["profiling","benchmarking"],
