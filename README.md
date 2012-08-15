@@ -22,6 +22,12 @@ Add to your composer.json file:
 }
 ```
 
+Then run the composer update
+
+```bash
+./composer.phar update
+```
+
 # Basic Usage
 
 This class extensively uses closures, and all of the methods (except for getResults) are chainable.
