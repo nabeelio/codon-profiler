@@ -1,4 +1,35 @@
 <?php
+/**
+ * Codon PHP 5.4+ Profiler
+ *
+ * @author      Nabeel Shahzad <nshahzad@gmail.com>
+ * @copyright   2012 Nabeel Shahzad
+ * @link		http://nabeelio.com
+ * @link        https://github.com/nshahzad/codon-profiler
+ * @license     MIT
+ * @package     Codon
+ *
+ * MIT LICENSE
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 namespace Codon;
 
@@ -67,6 +98,19 @@ class Profiler {
 
 
 	/**
+	 * Clear all previous data, including tests to run
+	 * @return Profiler
+	 */
+	public function clearAll() {
+
+		$this->_callees = [];
+		$this->_stats = [];
+
+		return $this;
+	}
+
+
+	/**
 	 * Run all of the tests and benchmarks
 	 * @return Profiler
 	 */
@@ -104,14 +148,18 @@ class Profiler {
 			# Initialize any stats we use
 			$this->_runtime['name'] = $name;
 			$this->_runtime['start_time'] = time();
-			$this->_stats[$name] = ['markers' => [], 'memory' => []];
+			$this->_stats[$name] = [
+				'timers' => [],
+				'checkpoints' => [],
+				'memory' => []
+			];
 
 			# Run the number of iterations specified
 			for ($i = 0; $i < $callee['iterations']; $i++) {
 				# Start our timers and run the actual thing
-				$this->startMarker('Total');
+				$this->startTimer('__total');
 				$callee['function']();
-				$this->endMarker('Total');
+				$this->endTimer('__total');
 			}
 
 			$this->_runtime['end_time'] = time();
@@ -119,10 +167,10 @@ class Profiler {
 			if ($this->params['showOutput'] === false)
 				ob_end_clean();
 
-			# Average up the stats for all of the markers
-			foreach ($this->_stats[$name]['markers'] as $m_name => $m_val) {
+			# Average up the stats for all of the timers
+			foreach ($this->_stats[$name]['timers'] as $m_name => $m_val) {
 				$average = $m_val['total'] / $callee['iterations'];
-				$this->_stats[$name]['markers'][$m_name]['total'] = $average;
+				$this->_stats[$name]['timers'][$m_name]['total'] = $average;
 			}
 
 			# @TODO Average memory usage numbers
@@ -139,12 +187,12 @@ class Profiler {
 
 
 	/**
-	 * Start a marker and time it from within a closure
+	 * Start a timer and time it from within a closure
 	 * @param string $name Name of the marker
 	 * @return Profiler
 	 */
-	public function startMarker($name) {
-		$this->_stats[$this->_runtime['name']]['markers'][$name]['start'] = microtime(true);
+	public function startTimer($name) {
+		$this->_stats[$this->_runtime['name']]['timers'][$name]['start'] = microtime(true);
 		return $this;
 	}
 
@@ -154,21 +202,21 @@ class Profiler {
 	 * @param string $n Name of the marker to end
 	 * @return Profiler
 	 */
-	public function endMarker($n) {
+	public function endTimer($n) {
 
 		$r = $this->_runtime['name']; # Just shorthand
-		$this->_stats[$r]['markers'][$n]['end'] = microtime(true);
+		$this->_stats[$r]['timers'][$n]['end'] = microtime(true);
 
 		if (!isset($this->_stats[$r][$n]['total'])) {
-			$this->_stats[$r]['markers'][$n]['total'] = 0;
+			$this->_stats[$r]['timers'][$n]['total'] = 0;
 		}
 
 		# Get the total run time for this marker
-		$this->_stats[$r]['markers'][$n]['total'] += ($this->_stats[$r]['markers'][$n]['end'] - $this->_stats[$r]['markers'][$n]['start']);
+		$this->_stats[$r]['timers'][$n]['total'] += ($this->_stats[$r]['timers'][$n]['end'] - $this->_stats[$r]['timers'][$n]['start']);
 
 		# Remove the tare'd amount if this is a total
-		if ($n === 'Total' && $this->params['tareRuns'] !== false) {
-			$this->_stats[$r]['markers'][$n]['total'] -= $this->_tare;
+		if ($n === '__total' && $this->params['tareRuns'] !== false) {
+			$this->_stats[$r]['timers'][$n]['total'] -= $this->_tare;
 		}
 
 		return $this;
@@ -197,6 +245,7 @@ class Profiler {
 	 * @return Profiler
 	 */
 	public function markMemoryUsage($name) {
+		//@TODO: Aggregate and average
 		$this->_stats[$this->_runtime['name']]['memory'][$name]['total'] = memory_get_usage();
 		$this->_stats[$this->_runtime['name']]['memory'][$name]['real'] = memory_get_usage(true);
 		return $this;
@@ -230,16 +279,16 @@ class Profiler {
 		foreach ($this->_stats as $name => $details) {
 
 			# Place the total marker at the end
-			$tmp = $this->_stats[$name]['markers']['Total'];
-			unset($this->_stats[$name]['markers']['Total']);
-			$this->_stats[$name]['markers']['Total'] = $tmp;
+			$tmp = $this->_stats[$name]['timers']['__total'];
+			unset($this->_stats[$name]['timers']['__total']);
+			$this->_stats[$name]['timers']['Total'] = $tmp;
 
 			# Show test title
 			$text .= sprintf($heading_fmt, $name, 'Iterations: ' . $details['iterations']);
 
 			# Show time usages
-			foreach ($details['markers'] as $mkr_name => $mkr) {
-				$text .= sprintf($marker_fmt, $mkr_name, $mkr['total']);
+			foreach ($details['timers'] as $tmr_n => $tmr_d) {
+				$text .= sprintf($marker_fmt, $tmr_n, $tmr_d['total']);
 			}
 
 			# Show checkpoints
