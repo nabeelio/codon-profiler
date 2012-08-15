@@ -9,6 +9,7 @@ A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.
 Current to-do list:
 
 * Console colors to show the fastest test runs
+* Show percentage differences between runs
 * Use the Vulcan Logic Dumper (http://derickrethans.nl/projects.html#vld) to allow you to see opcode differences
 
 # Installation
