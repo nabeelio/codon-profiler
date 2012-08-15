@@ -10,7 +10,7 @@ A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.
 
 Add to your composer.json file:
 
-```json
+```
 "require": {
     "codon/profiler": "@dev"
 }
@@ -120,7 +120,6 @@ $profiler = new \Codon\Profiler([
 	'showOutput' => false
 ]);
 
-
 $profiler->markMemoryUsage('start');
 $profiler->startTimer('Count in loop');
 
@@ -130,7 +129,6 @@ for($i = 0; $i < count($data); $i++) {
 
 $profiler->endTimer('Count in loop');
 $profiler->markMemoryUsage('end');
-
 
 $profiler->showResults();
 ```
@@ -155,7 +153,6 @@ Timers:
 
 ```php
 <?php
-
 # Generate some sample data
 $data = [];
 for($i = 1; $i <= 1000; $i++) {
