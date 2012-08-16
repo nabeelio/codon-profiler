@@ -4,7 +4,9 @@ A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.
 
 * **Author:** Nabeel Shahzad <nshahzad@gmail.com>
 * **Homepage:** https://github.com/nshahzad/codon-profiler
+* **Packagist:** https://github.com/nshahzad/codon-profiler
 * **License:** MIT
+* **Version:** 1.0 
 
 Current to-do list:
 
@@ -18,7 +20,7 @@ Add to your composer.json file:
 
 ```
 "require": {
-    "codon/profiler": "@dev"
+    "codon/profiler": "*"
 }
 ```
 
