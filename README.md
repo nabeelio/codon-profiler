@@ -89,7 +89,7 @@ There are two ways you can use the profile:
 2. Profile code inline using the ```startTimer()/endTimer()```; (see test/inline.php)
 
 
-### Using add()
+### add()
 
 To add a test, you use the ```add()``` method, which accepts an array of:
 
@@ -127,7 +127,12 @@ $test = [
 ];
 
 $profiler->add($test);
+
+# You can chain these too
+$profiler->add($test1)->add($test2);
 ```
+
+### run()
 
 To run all of the tests, call ```run()```:
 
@@ -136,17 +141,149 @@ To run all of the tests, call ```run()```:
 $profiler->run();
 ```
 
-And to show the results:
+#### Passing parameters
+
+Your test function can also have any parameters, and any parameters passed to ```run()``` will be passed to the closure.
+I.e, if you're measuring run-times of methods in a class:
 
 ```php
 <?php
-$profiler->showResults([bool $html = false (wrap PRE with BR's)], [bool $return = false (ouput directly?)]]
+class Test {
+
+    public $_data = [];
+
+    protected $_profiler;
+
+    public function __construct() {
+        $this->_profiler = new \Codon\Profiler();
+    }
+
+    public function runMethodProfiler() {
+        $this->_profiler->add([
+            'name' => 'testFunction', 'iterations' => 1,
+            'function' => function($class) use (&$this->_profiler) {
+                $class->testFunction($class->_data);
+            }
+        ])->run($this);
+    }
+
+    public function testFunction($data = '') {
+
+        // Benchmark something in here
+
+    }
+}
 ```
 
-### Using the profiler inline
+### clear()
 
-You can call the ```startTimer()/endTimer()``` and ```markMemoryUsage()``` functions in any inline code
-Example:
+Use the ```clear()``` function to clear the results of previous tests.
+
+```
+<?php
+$profiler->add(/*...*/)->run();
+// something
+$profiler->clear()->run(); # Re-run the tests
+```
+
+### clearAll()
+
+Use the ```clearAll()``` function to reset the profiler to having no tests or runs.
+
+```
+<?php
+$profiler->add(/*...*/)->run();
+$profiler->clearAll();
+$profiler->add(/*...*/)->run();
+```
+
+
+### startTimer($name)/endTimer($name)
+
+To measure points within a running benchmark. Can also be used inline (see below)
+
+* **$name** Name of the timer
+
+```php
+<?php
+$profiler
+ ->add([ 'name' => 'Count in loop', 'iterations' => 1,
+     'function' => function() use ($data, &$profiler) {
+
+        $profiler->startTimer('Inside loop');
+        for($i = 0; $i < count($data); $i++) {
+            echo $data[$i] . "\n";
+        }
+        $profiler->endTimer('Inside loop');
+
+        // Or this way:
+
+        $timer_outside = $profiler->startTimer('Outside loop');
+        $count = count($data);
+        for($i = 0; $i < $count; $i++) {
+            echo $data[$i] . "\n";
+        }
+        $profiler->endTimer($timer_outside);
+     })->run();
+```
+
+### checkpoint($name)
+
+Mark a checkpoint time from the start of the current test
+
+* **$name** Checkpoint name
+
+### markMemoryUsage($name)
+
+This will take note of a memory usage at the point that this is called. Gets the usage by the script, PHP engine, and peak usage.
+
+* **$name** Name of the current point
+
+```php
+<?php
+$profiler
+->clearAll()
+ ->add([
+     'name' => 'Count in loop',
+     'iterations' => 100,
+     'function' => function() use ($data, &$profiler) {
+
+        $profiler->markMemoryUsage('Before loop');
+        for($i = 0; $i < count($data); $i++) {
+            echo $data[$i] . "\n";
+        }
+        $profiler->markMemoryUsage('After loop');
+
+     })->run();
+```
+
+### showResults($html = false, $return = false)
+
+Shows a formatted table
+
+* **$html** If not false, will return <br /> instead of newlines, and put it in a <pre> tag with the class name of what's passed
+* **$return** To return the results as a string, or just echo it out right away
+
+```
+Tests started at: 2012-08-15T12:40:28-04:00
+Tests run: 1, iterations: 300
+PHP Version: 5.4.5-1~dotdeb.0
+Count in loop               (Iterations: 100)
+---------
+Timers:
+        Inside loop:        0.000016908646
+       Outside loop:        0.000004930496
+              total:        0.000022240901
+```
+
+
+### getResults()
+
+Returns an array with the raw results of a run
+
+## Using the profiler inline
+
+You can call the ```startTimer()/endTimer()``` and ```markMemoryUsage()``` functions in any inline code.
 
 ```php
 <?php
@@ -191,65 +328,7 @@ Timers:
 
 # Examples
 
-## Multiple Tests
-
-```php
-<?php
-# Generate some sample data
-$data = [];
-for($i = 1; $i <= 1000; $i++) {
-	$data[] = rand(1, $i * $i);
-}
-
-$profiler = new \Codon\Profiler();
-$profiler
-	->set('showOutput', false)
-    ->add([
-        'name' => 'Count in loop',
-        'iterations' => 100,
-        'function' => function() use ($data, &profiler) {
-            // This is the code we are profiling
-            for($i = 0; $i < count($data); $i++) {
-                echo $data[$i] . "\n";
-            }
-        }
-    ])
-    ->add([
-        'name' => 'Count out of loop',
-        'iterations' => 100,
-        'function' => function() use ($data, &profiler) {
-            // This is the code we are profiling
-			$count = count($data);
-            for($i = 0; $i < $count; $i++) {
-                echo $data[$i] . "\n";
-            }
-        }
-    ])
-	->run()
-	->showResults();
-```
-
-This will output:
-
-```
-Tests started at: 2012-08-15T12:05:37-04:00
-Tests run: 2, iterations: 200
-PHP Version: 5.4.5-1~dotdeb.0
-
-Count in loop               (Iterations: 100)
----------
-Timers:
-              total:        0.000011045170
-
-
-
-Count out of loop           (Iterations: 100)
----------
-Timers:
-              total:        0.000004445744
-```
-
-## The same as above, but with timers:
+## Measuring two ways of doing a for() loop:
 
 ```php
 <?php
@@ -321,30 +400,6 @@ $profiler
 			$profiler->endTimer('Loop only');
         }
     ])
-    ->add([
-        'name' => 'Count out of loop',
-        'iterations' => 100,
-        'function' => function() use ($data, &$profiler) {
-
-            // This is the code we are profiling
-
-			$profiler->markMemoryUsage('Start of loop');
-			$count = count($data);
-
-			$profiler->startTimer('Loop only');
-            for($i = 0; $i < $count; $i++) {
-
-				if($i === 500) {
-					$profiler->checkpoint('halfway');
-					$profiler->markMemoryUsage('halfway');
-				}
-
-                echo $data[$i] . "\n";
-            }
-			$profiler->endTimer('Loop only');
-
-        }
-    ])
 	->run()
 	->showResults();
 ```
@@ -353,22 +408,8 @@ Which will output:
 
 ```
 Tests started at: 2012-08-15T12:30:07-04:00
-Tests run: 2, iterations: 200
+Tests run: 1, iterations: 100
 PHP Version: 5.4.5-1~dotdeb.0
-Count in loop               (Iterations: 100)
----------
-Timers:
-          Loop only:        0.000015780926
-              total:        0.000016092539
-
-Checkpoints:
-            halfway:        0.000819134712
-
-      Memory Usage:         script         peak        total
-      Start of loop:        468 KB       491 KB       512 KB
-            halfway:        484 KB       491 KB       512 KB
-
-
 
 Count out of loop           (Iterations: 100)
 ---------
@@ -382,142 +423,4 @@ Checkpoints:
       Memory Usage:         script         peak        total
       Start of loop:        472 KB       491 KB       512 KB
             halfway:        488 KB       491 KB       512 KB
-```
-
-### Calling getResults
-
-Additionally, calling ```getResults()``` will return an array of:
-
-```
-Array
-(
-    [<TEST_NAME>] => Array
-    (
-        [timers] => Array
-        (
-            [<TIMER_NAME>] => Array
-                (
-                    [start] => 1345047230.6797
-                    [end] => 1345047230.6813
-                    [total] => 1.6541504859924E-5
-                )
-
-            ...
-
-        )
-
-        [checkpoints] => Array
-        (
-            [<CHECKPOINTS] => 0.00094666719436646
-            ...
-        )
-
-        [memory] => Array
-        (
-            [<NAME>] => Array
-                (
-                    [total] => 669742.48
-                    [real] => 857210.88
-                )
-            ...
-
-        )
-
-        [iterations] => 100
-    )
-```
-
-Example:
-
-```
-Array
-(
-    [Count in loop] => Array
-    (
-        [timers] => Array
-        (
-            [Loop only] => Array
-                (
-                    [start] => 1345047400.6883
-                    [end] => 1345047400.6904
-                    [total] => 2.0921230316162E-5
-                )
-
-            [total] => Array
-                (
-                    [start] => 1345047400.6883
-                    [end] => 1345047400.6904
-                    [total] => 2.1232867240906E-5
-                )
-
-        )
-
-    [checkpoints] => Array
-        (
-            [halfway] => 0.00087648630142212
-        )
-
-    [memory] => Array
-        (
-            [Start of loop] => Array
-                (
-                    [total] => 669854.48
-                    [real] => 857210.88
-                )
-
-            [halfway] => Array
-                (
-                    [total] => 671882.48
-                    [real] => 862453.76
-                )
-
-        )
-
-        [iterations] => 100
-    )
-
-    [Count out of loop] => Array
-    (
-        [timers] => Array
-        (
-            [Loop only] => Array
-                (
-                    [start] => 1345047400.7563
-                    [end] => 1345047400.757
-                    [total] => 7.5697898864746E-6
-                )
-
-            [total] => Array
-                (
-                    [start] => 1345047400.7562
-                    [end] => 1345047400.757
-                    [total] => 7.8718900680542E-6
-                )
-
-        )
-
-    [checkpoints] => Array
-        (
-            [halfway] => 0.00033202171325684
-        )
-
-    [memory] => Array
-        (
-            [Start of loop] => Array
-                (
-                    [total] => 674298.08
-                    [real] => 857210.88
-                )
-
-            [halfway] => Array
-                (
-                    [total] => 676372.48
-                    [real] => 862453.76
-                )
-
-        )
-
-        [iterations] => 100
-    )
-)
 ```

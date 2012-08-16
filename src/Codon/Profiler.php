@@ -69,6 +69,7 @@ class Profiler {
 
 	/**
 	 * Set options for this benchmarking class
+	 * @chainable
 	 * @param mixed $name Name of the setting from $this->params
 	 * @param mixed $value Value of said setting
 	 * @return Profiler
@@ -95,6 +96,7 @@ class Profiler {
 	 *  'function' => closure of the test to run
 	 * ]
 	 *
+	 * @chainable
 	 * @param array $test An array with the benchmark to run
 	 * @return Profiler
 	 */
@@ -111,6 +113,7 @@ class Profiler {
 
 	/**
 	 * Clear all previous data, including tests to run
+	 * @chainable
 	 * @return Profiler
 	 */
 	public function clearAll() {
@@ -123,7 +126,20 @@ class Profiler {
 
 
 	/**
+	 * Clears any test runs, but keeps the tests intact
+	 * @chainable
+	 * @return Profiler
+	 */
+	public function clear() {
+		$this->_results = [];
+		return $this;
+	}
+
+
+	/**
 	 * Run all of the tests and benchmarks
+	 * @chainable
+	 * @params Pass arguments to forward to the closure
 	 * @return Profiler
 	 */
 	public function run() {
@@ -167,7 +183,7 @@ class Profiler {
 			for ($i = 0; $i < $test['iterations']; $i++) {
 				# Start our timers and run the actual thing
 				$this->startTimer('__total');
-				$test['function']();
+				call_user_func_array($test['function'], func_get_args());
 				$this->endTimer('__total');
 			}
 
@@ -204,23 +220,23 @@ class Profiler {
 
 	/**
 	 * Start a timer and time it from within a closure
-	 * @param string $name Name of the marker
-	 * @return Profiler
+	 * @param string $n Name of the marker
+	 * @return string
 	 */
-	public function startTimer($name) {
-		$this->_results[$this->_running]['timers'][$name]['start'] = microtime(true);
+	public function startTimer($n) {
+		$this->_results[$this->_running]['timers'][$n]['start'] = microtime(true);
 
 		if ($this->params['showOutput'] === false)
 			ob_start();
 
-		return $this;
+		return $n;
 	}
 
 
 	/**
 	 * End timing a marker with a given name
 	 * @param string $n Name of the marker to end
-	 * @return Profiler
+	 * @return string
 	 */
 	public function endTimer($n) {
 
@@ -242,7 +258,7 @@ class Profiler {
 		if ($this->params['showOutput'] === false)
 			ob_end_clean();
 
-		return $this;
+		return $n;
 	}
 
 
@@ -267,6 +283,7 @@ class Profiler {
 
 	/**
 	 * Get the memory usage at a certain point
+	 * @chainable
 	 * @param string $name Name of the point
 	 * @return Profiler
 	 */
@@ -294,7 +311,7 @@ class Profiler {
 
 	/**
 	 * Show the results on the screen
-	 * @param bool $html Enclose this in HTML tags?
+	 * @param mixed $html False, otherwise the class-name to use for the <pre> tag
 	 * @param bool $return Whether to return the table, or output it
 	 * @return Profiler|string
 	 */
@@ -351,8 +368,8 @@ class Profiler {
 			$text .= "\n\n";
 		}
 
-		if ($html === true) {
-			$text = '<pre class="benchmarkResults">' . nl2br($text) . '</pre>';
+		if ($html !== false) {
+			$text = '<pre class="' . $html . '">' . nl2br($text, true) . '</pre>';
 		}
 
 		if ($return === true) {
