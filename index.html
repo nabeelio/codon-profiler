@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Codon-profiler by nshahzad</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Codon-profiler</h1>
+        <h2>A PHP 5.4+ Benchmarking class</h2>
+        <a href="https://github.com/nshahzad/codon-profiler" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>Codon/Profiler</h1>
+
+<p>A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.</p>
+
+<ul>
+<li>
+<strong>Author:</strong> Nabeel Shahzad <a href="mailto:nshahzad@gmail.com">nshahzad@gmail.com</a>
+</li>
+<li>
+<strong>Homepage:</strong> <a href="https://github.com/nshahzad/codon-profiler">https://github.com/nshahzad/codon-profiler</a>
+</li>
+<li>
+<strong>Packagist:</strong> <a href="http://packagist.org/packages/codon/profiler">http://packagist.org/packages/codon/profiler</a>
+</li>
+<li>
+<strong>License:</strong> MIT</li>
+<li>
+<strong>Version:</strong> 1.0</li>
+</ul><p>Current to-do list:</p>
+
+<ul>
+<li>Console colors to show the fastest test runs</li>
+<li>Show percentage differences between runs</li>
+<li>Use the Vulcan Logic Dumper (<a href="http://derickrethans.nl/projects.html#vld">http://derickrethans.nl/projects.html#vld</a>) to allow you to see opcode differences</li>
+</ul><h1>Installation</h1>
+
+<p>Add to your composer.json file:</p>
+
+<pre><code>"require": {
+    "codon/profiler": "*"
+}
+</code></pre>
+
+<p>Then run the composer update</p>
+
+<div class="highlight"><pre>./composer.phar update
+</pre></div>
+
+<h1>Basic Usage</h1>
+
+<p>This class extensively uses closures, and all of the methods (except for getResults) are chainable.
+Declare a new Profiler class:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$data</span> <span class="o">=</span> <span class="p">[</span><span class="cm">/* ... */</span><span class="p">];</span>
+<span class="nv">$profiler</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">\Codon\Profiler</span><span class="p">();</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">set</span><span class="p">(</span><span class="s1">'showOutput'</span><span class="p">,</span> <span class="k">false</span><span class="p">)</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count in loop'</span><span class="p">,</span> <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$profiler</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// This is the code to benchmark:</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">])</span><span class="o">-&gt;</span><span class="na">run</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">showResults</span><span class="p">();</span>
+</pre></div>
+
+<p>Which will output something like:</p>
+
+<pre><code>Tests started at: 2012-08-15T12:05:37-04:00
+Tests run: 2, iterations: 200
+PHP Version: 5.4.5-1~dotdeb.0
+
+Count in loop               (Iterations: 100)
+---------
+Timers:
+              total:        0.000011045170
+</code></pre>
+
+<h2>Settings</h2>
+
+<p>To change profiler settings, use the <code>set()</code> function:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">set</span><span class="p">(</span><span class="nv">$name</span><span class="p">,</span> <span class="nv">$value</span><span class="p">);</span>
+</pre></div>
+
+<p>Some settings (type and (default)):</p>
+
+<ul>
+<li>
+<strong>showOutput</strong> - bool (false)- supress output from the test runs</li>
+<li>
+<strong>tareRuns</strong> - bool (true) - There is some penalty for running a closure. This will average the time to run an empty closure, and subtract it from the average of all the runs (only from the total, not checkpoints or timers that are called within)</li>
+<li>
+<strong>formatMemoryUsage</strong> - bool (true) - Show the memory usage in a digestable format</li>
+</ul><h2>Using the Profiler</h2>
+
+<p>There are two ways you can use the profile:</p>
+
+<ol>
+<li>Add tests using <code>add()</code>; (see test/benchmark.php)</li>
+<li>Profile code inline using the <code>startTimer()/endTimer()</code>; (see test/inline.php)</li>
+</ol><h3>Using add()</h3>
+
+<p>To add a test, you use the <code>add()</code> method, which accepts an array of:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$test</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Benchmark name'</span><span class="p">,</span>
+    <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="c1"># of times to run</span>
+    <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="nx">closure</span> <span class="nx">of</span> <span class="nx">the</span> <span class="nx">test</span> <span class="nx">to</span> <span class="nx">run</span>
+<span class="p">];</span>
+
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">add</span><span class="p">(</span><span class="nv">$test</span><span class="p">);</span>
+</pre></div>
+
+<p>This method can be chained</p>
+
+<p>Tip: To use checkpoints/timers and other functionality within your test run, pass the Profiler object via <code>use</code> (as a reference). You can also pass any other data/variables needed for your tests via the <code>use</code></p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$test</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Sample'</span><span class="p">,</span>
+    <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span>
+    <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="o">&amp;</span><span class="nv">$profiler</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">checkpoint</span><span class="p">(</span><span class="s1">'Started!'</span><span class="p">);</span>
+
+        <span class="c1">// some code</span>
+
+        <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Subsection'</span><span class="p">);</span>
+        <span class="c1">// Subsection of code</span>
+        <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Subsection'</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">];</span>
+
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">add</span><span class="p">(</span><span class="nv">$test</span><span class="p">);</span>
+</pre></div>
+
+<p>To run all of the tests, call <code>run()</code>:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">run</span><span class="p">();</span>
+</pre></div>
+
+<p>And to show the results:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">showResults</span><span class="p">([</span><span class="nx">bool</span> <span class="nv">$html</span> <span class="o">=</span> <span class="k">false</span> <span class="p">(</span><span class="nx">wrap</span> <span class="nx">PRE</span> <span class="nx">with</span> <span class="nx">BR</span><span class="err">'</span><span class="nx">s</span><span class="p">)],</span> <span class="p">[</span><span class="nx">bool</span> <span class="nv">$return</span> <span class="o">=</span> <span class="k">false</span> <span class="p">(</span><span class="nx">ouput</span> <span class="nx">directly</span><span class="o">?</span><span class="p">)]]</span>
+</pre></div>
+
+<h3>Using the profiler inline</h3>
+
+<p>You can call the <code>startTimer()/endTimer()</code> and <code>markMemoryUsage()</code> functions in any inline code
+Example:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$data</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nv">$data</span><span class="p">[]</span> <span class="o">=</span> <span class="nv">$i</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1"># You can pass options to the constructor</span>
+<span class="nv">$profiler</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">\Codon\Profiler</span><span class="p">([</span>
+    <span class="s1">'showOutput'</span> <span class="o">=&gt;</span> <span class="k">false</span>
+<span class="p">]);</span>
+
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'start'</span><span class="p">);</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Count in loop'</span><span class="p">);</span>
+
+<span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Count in loop'</span><span class="p">);</span>
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'end'</span><span class="p">);</span>
+
+<span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">showResults</span><span class="p">();</span>
+</pre></div>
+
+<p>Which shows:</p>
+
+<pre><code>Tests started at: 2012-08-15T12:30:02-04:00
+Tests run: 1, iterations: 0
+PHP Version: 5.4.5-1~dotdeb.0
+
+---------
+Timers:
+      Count in loop:        0.001808881760
+
+      Memory Usage:         script         peak        total
+              start:        435 KB       456 KB       512 KB
+                end:        438 KB       456 KB       512 KB
+</code></pre>
+
+<h1>Examples</h1>
+
+<h2>Multiple Tests</h2>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="c1"># Generate some sample data</span>
+<span class="nv">$data</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;=</span> <span class="mi">1000</span><span class="p">;</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nv">$data</span><span class="p">[]</span> <span class="o">=</span> <span class="nx">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nv">$i</span> <span class="o">*</span> <span class="nv">$i</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="nv">$profiler</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">\Codon\Profiler</span><span class="p">();</span>
+<span class="nv">$profiler</span>
+    <span class="o">-&gt;</span><span class="na">set</span><span class="p">(</span><span class="s1">'showOutput'</span><span class="p">,</span> <span class="k">false</span><span class="p">)</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count in loop'</span><span class="p">,</span>
+        <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">profiler</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// This is the code we are profiling</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">])</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count out of loop'</span><span class="p">,</span>
+        <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">profiler</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// This is the code we are profiling</span>
+            <span class="nv">$count</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nv">$count</span><span class="p">;</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">])</span>
+    <span class="o">-&gt;</span><span class="na">run</span><span class="p">()</span>
+    <span class="o">-&gt;</span><span class="na">showResults</span><span class="p">();</span>
+</pre></div>
+
+<p>This will output:</p>
+
+<pre><code>Tests started at: 2012-08-15T12:05:37-04:00
+Tests run: 2, iterations: 200
+PHP Version: 5.4.5-1~dotdeb.0
+
+Count in loop               (Iterations: 100)
+---------
+Timers:
+              total:        0.000011045170
+
+
+
+Count out of loop           (Iterations: 100)
+---------
+Timers:
+              total:        0.000004445744
+</code></pre>
+
+<h2>The same as above, but with timers:</h2>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$profiler</span>
+    <span class="o">-&gt;</span><span class="na">clearAll</span><span class="p">()</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count in loop'</span><span class="p">,</span>
+        <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$profiler</span><span class="p">)</span> <span class="p">{</span>
+
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Inside loop'</span><span class="p">);</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Inside loop'</span><span class="p">);</span>
+
+
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Outside loop'</span><span class="p">);</span>
+            <span class="nv">$count</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nv">$count</span><span class="p">;</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Outside loop'</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">])</span>
+    <span class="o">-&gt;</span><span class="na">run</span><span class="p">()</span>
+    <span class="o">-&gt;</span><span class="na">showResults</span><span class="p">();</span>
+</pre></div>
+
+<p>Showing:</p>
+
+<pre><code>Tests started at: 2012-08-15T12:40:28-04:00
+Tests run: 1, iterations: 300
+PHP Version: 5.4.5-1~dotdeb.0
+Count in loop               (Iterations: 100)
+---------
+Timers:
+        Inside loop:        0.000016908646
+       Outside loop:        0.000004930496
+              total:        0.000022240901
+</code></pre>
+
+<h2>Using Timers and checkpoints</h2>
+
+<div class="highlight"><pre><span class="cp">&lt;?php</span>
+<span class="nv">$profiler</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">\Codon\Profiler</span><span class="p">();</span>
+<span class="nv">$profiler</span>
+    <span class="o">-&gt;</span><span class="na">set</span><span class="p">(</span><span class="s1">'showOutput'</span><span class="p">,</span> <span class="k">false</span><span class="p">)</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count in loop'</span><span class="p">,</span>
+        <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$profiler</span><span class="p">)</span> <span class="p">{</span>
+
+            <span class="c1">// This is the code we are profiling</span>
+
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'Start of loop'</span><span class="p">);</span>
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Loop only'</span><span class="p">);</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+
+                <span class="k">if</span><span class="p">(</span><span class="nv">$i</span> <span class="o">===</span> <span class="mi">500</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">checkpoint</span><span class="p">(</span><span class="s1">'halfway'</span><span class="p">);</span>
+                    <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'halfway'</span><span class="p">);</span>
+                <span class="p">}</span>
+
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Loop only'</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">])</span>
+    <span class="o">-&gt;</span><span class="na">add</span><span class="p">([</span>
+        <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'Count out of loop'</span><span class="p">,</span>
+        <span class="s1">'iterations'</span> <span class="o">=&gt;</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s1">'function'</span> <span class="o">=&gt;</span> <span class="k">function</span><span class="p">()</span> <span class="k">use</span> <span class="p">(</span><span class="nv">$data</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$profiler</span><span class="p">)</span> <span class="p">{</span>
+
+            <span class="c1">// This is the code we are profiling</span>
+
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'Start of loop'</span><span class="p">);</span>
+            <span class="nv">$count</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$data</span><span class="p">);</span>
+
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">startTimer</span><span class="p">(</span><span class="s1">'Loop only'</span><span class="p">);</span>
+            <span class="k">for</span><span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&lt;</span> <span class="nv">$count</span><span class="p">;</span> <span class="nv">$i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+
+                <span class="k">if</span><span class="p">(</span><span class="nv">$i</span> <span class="o">===</span> <span class="mi">500</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">checkpoint</span><span class="p">(</span><span class="s1">'halfway'</span><span class="p">);</span>
+                    <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">markMemoryUsage</span><span class="p">(</span><span class="s1">'halfway'</span><span class="p">);</span>
+                <span class="p">}</span>
+
+                <span class="k">echo</span> <span class="nv">$data</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span> <span class="o">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="nv">$profiler</span><span class="o">-&gt;</span><span class="na">endTimer</span><span class="p">(</span><span class="s1">'Loop only'</span><span class="p">);</span>
+
+        <span class="p">}</span>
+    <span class="p">])</span>
+    <span class="o">-&gt;</span><span class="na">run</span><span class="p">()</span>
+    <span class="o">-&gt;</span><span class="na">showResults</span><span class="p">();</span>
+</pre></div>
+
+<p>Which will output:</p>
+
+<pre><code>Tests started at: 2012-08-15T12:30:07-04:00
+Tests run: 2, iterations: 200
+PHP Version: 5.4.5-1~dotdeb.0
+Count in loop               (Iterations: 100)
+---------
+Timers:
+          Loop only:        0.000015780926
+              total:        0.000016092539
+
+Checkpoints:
+            halfway:        0.000819134712
+
+      Memory Usage:         script         peak        total
+      Start of loop:        468 KB       491 KB       512 KB
+            halfway:        484 KB       491 KB       512 KB
+
+
+
+Count out of loop           (Iterations: 100)
+---------
+Timers:
+          Loop only:        0.000006530285
+              total:        0.000006922960
+
+Checkpoints:
+            halfway:        0.000361402035
+
+      Memory Usage:         script         peak        total
+      Start of loop:        472 KB       491 KB       512 KB
+            halfway:        488 KB       491 KB       512 KB
+</code></pre>
+
+<h3>Calling getResults</h3>
+
+<p>Additionally, calling <code>getResults()</code> will return an array of:</p>
+
+<pre><code>Array
+(
+    [&lt;TEST_NAME&gt;] =&gt; Array
+    (
+        [timers] =&gt; Array
+        (
+            [&lt;TIMER_NAME&gt;] =&gt; Array
+                (
+                    [start] =&gt; 1345047230.6797
+                    [end] =&gt; 1345047230.6813
+                    [total] =&gt; 1.6541504859924E-5
+                )
+
+            ...
+
+        )
+
+        [checkpoints] =&gt; Array
+        (
+            [&lt;CHECKPOINTS] =&gt; 0.00094666719436646
+            ...
+        )
+
+        [memory] =&gt; Array
+        (
+            [&lt;NAME&gt;] =&gt; Array
+                (
+                    [total] =&gt; 669742.48
+                    [real] =&gt; 857210.88
+                )
+            ...
+
+        )
+
+        [iterations] =&gt; 100
+    )
+</code></pre>
+
+<p>Example:</p>
+
+<pre><code>Array
+(
+    [Count in loop] =&gt; Array
+    (
+        [timers] =&gt; Array
+        (
+            [Loop only] =&gt; Array
+                (
+                    [start] =&gt; 1345047400.6883
+                    [end] =&gt; 1345047400.6904
+                    [total] =&gt; 2.0921230316162E-5
+                )
+
+            [total] =&gt; Array
+                (
+                    [start] =&gt; 1345047400.6883
+                    [end] =&gt; 1345047400.6904
+                    [total] =&gt; 2.1232867240906E-5
+                )
+
+        )
+
+    [checkpoints] =&gt; Array
+        (
+            [halfway] =&gt; 0.00087648630142212
+        )
+
+    [memory] =&gt; Array
+        (
+            [Start of loop] =&gt; Array
+                (
+                    [total] =&gt; 669854.48
+                    [real] =&gt; 857210.88
+                )
+
+            [halfway] =&gt; Array
+                (
+                    [total] =&gt; 671882.48
+                    [real] =&gt; 862453.76
+                )
+
+        )
+
+        [iterations] =&gt; 100
+    )
+
+    [Count out of loop] =&gt; Array
+    (
+        [timers] =&gt; Array
+        (
+            [Loop only] =&gt; Array
+                (
+                    [start] =&gt; 1345047400.7563
+                    [end] =&gt; 1345047400.757
+                    [total] =&gt; 7.5697898864746E-6
+                )
+
+            [total] =&gt; Array
+                (
+                    [start] =&gt; 1345047400.7562
+                    [end] =&gt; 1345047400.757
+                    [total] =&gt; 7.8718900680542E-6
+                )
+
+        )
+
+    [checkpoints] =&gt; Array
+        (
+            [halfway] =&gt; 0.00033202171325684
+        )
+
+    [memory] =&gt; Array
+        (
+            [Start of loop] =&gt; Array
+                (
+                    [total] =&gt; 674298.08
+                    [real] =&gt; 857210.88
+                )
+
+            [halfway] =&gt; Array
+                (
+                    [total] =&gt; 676372.48
+                    [real] =&gt; 862453.76
+                )
+
+        )
+
+        [iterations] =&gt; 100
+    )
+)
+</code></pre>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/nshahzad/codon-profiler/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/nshahzad/codon-profiler/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/nshahzad/codon-profiler"></a> is maintained by <a href="https://github.com/nshahzad">nshahzad</a>.</p>
+
+          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
