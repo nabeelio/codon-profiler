@@ -6,7 +6,7 @@ A PHP 5.4+ profiling class, loosely based on the PEAR Benchmark package.
 * **Homepage:** https://github.com/nshahzad/codon-profiler
 * **Packagist:** https://github.com/nshahzad/codon-profiler
 * **License:** MIT
-* **Version:** 1.0 
+* **Version:** 1.0
 
 Current to-do list:
 
